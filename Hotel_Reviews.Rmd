@@ -62,7 +62,7 @@ All Data Leaflet and Table
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Leaflet Ya'll
+### Hotel Reviews Geospatially
 
 ```{r}
 map<-leaflet()%>%
@@ -94,12 +94,12 @@ Detailed Leaflet
 Column {data-width=350}
 -----------------------------------------------------------------------
 
-### Leaflet features
+### Leaflet Layers
 
 ```{r}
 map2<-leaflet(countryBoundaries2)%>%
-  addProviderTiles(providers$Esri.NatGeoWorldMap, group = 'ESRINatGeoWorld')%>%
   addTiles(group='base')%>%
+  addProviderTiles(providers$Esri.NatGeoWorldMap, group = 'ESRINatGeoWorld')%>%
   addCircleMarkers(lat = hotelMap$lat, lng = hotelMap$lng, 
                    radius = 5, 
                    color='brown', 
