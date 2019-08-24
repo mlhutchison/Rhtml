@@ -1,0 +1,123 @@
+---
+title: "Html in R, Presenting Geospatial Data"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: simplex
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+#######PUT LIBRARIES AT THE TOP
+library(flexdashboard)
+library(DT)
+library(leaflet)
+#library(crosstalk)
+library(raster)
+library(mapview)
+library(rgdal)
+library(sp)
+library(dplyr)
+library(rgdal)
+#library(visNetwork)
+#library(timeVis)
+############SET WORK DIRECTORY
+setwd('C:\\Users\\MH\\UnGit')
+######READ IN DATA
+
+####REVIEW DATA BY HOTEL
+reviews<-read.csv('Hotel_Reviews.csv')
+####COUNTRY BOUNDARIES
+countryBoundaries<-readOGR(dsn='C:\\Users\\MH\\UnGit\\Countries_WGS84.shp', layer='Countries_WGS84')
+####FILTER BY COUNTRIES
+countryFilter=c('United Kingdom','Netherlands Antilles', 'France', 'Spain',
+                'Italy','Austria')
+countryBoundaries2<-subset(countryBoundaries, CNTRY_NAME %in% countryFilter)
+
+#PREPROCESS DATA FOR LEAFLET
+hotelMap<-reviews%>%
+  dplyr::select('Hotel_Name','lng','lat',)%>%
+  unique()%>%
+  filter(lng!='NA')
+
+#AGGREGATE REVIEWS BY HOTEL
+reviewHotelCount<-reviews%>%
+  group_by(Hotel_Name)%>%
+  mutate(reviews_in_data = n())%>%
+  dplyr::select('Hotel_Name','Total_Number_of_Reviews', 'reviews_in_data')%>%
+  unique()%>%
+  inner_join(hotelMap, by='Hotel_Name')
+
+reviewHotelCount<-reviewHotelCount[order(reviewHotelCount$Total_Number_of_Reviews, decreasing = TRUE),]
+
+coords=cbind(hotelMap$lng,hotelMap$lat)
+sp_hotel<-SpatialPointsDataFrame(coords=coords, hotelMap, proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+
+
+```
+
+All Data Leaflet and Table
+===================================== 
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Leaflet Ya'll
+
+```{r}
+map<-leaflet()%>%
+  addTiles()%>%
+  addCircleMarkers(lat = reviewHotelCount$lat, lng = reviewHotelCount$lng, 
+                   radius = 5, 
+                   color='brown', 
+                   clusterOptions = markerClusterOptions(),
+                   popup = reviewHotelCount$Hotel_Name
+                   )
+  
+
+map
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Data table
+
+```{r}
+datatable(reviewHotelCount, rownames = FALSE)
+```
+
+
+Detailed Leaflet
+=====================================
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Leaflet features
+
+```{r}
+map2<-leaflet(countryBoundaries2)%>%
+  addProviderTiles(providers$Esri.NatGeoWorldMap, group = 'ESRINatGeoWorld')%>%
+  addTiles(group='base')%>%
+  addCircleMarkers(lat = hotelMap$lat, lng = hotelMap$lng, 
+                   radius = 5, 
+                   color='brown', 
+                   clusterOptions = markerClusterOptions(),
+                   popup = paste0(hotelMap$Hotel_Name," ", hotelMap$lng,",",hotelMap$lat), group='hotelPoints')%>%
+  addPolygons(fillOpacity = 0.1, group='countryBoundaries', 
+              highlightOptions = highlightOptions(color = "white", weight = 2,bringToFront = TRUE))%>%
+  addLayersControl(
+    baseGroups =c("OpenStreetMap", "ESRINatGeoWorld"),
+    overlayGroups=c("hotelPoints","countryBoundaries"),
+    options = layersControlOptions(collapsed=FALSE)
+     )%>%
+   addMouseCoordinates()%>%
+   addHomeButton(extent(sp_hotel), "Worldwide")
+  
+
+
+map2 
+```
+
+
